@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+#
+# COPYRIGHT 2022 BEAM NETWORKS (beamnetworks.dev)
+# CREATED BY: cole@beamnetworks.dev
+#
+#
+
+# SET MANUAL DESTINATION FOR BACKUP
+dest="user@host.local"
+path="/mnt/md0/backups/server/nginxbackups"
+
+echo " CREATING TEMP FOLDER "
+sudo mkdir /var/tmp/nginx-backup
+
+echo " COPYING SITES-ENABLED TO TEMP FOLDER "
+sudo cp -r /etc/nginx/sites-enabled/ /var/tmp/nginx-backup/
+
+echo " COPYING NGINX.CONF TO TEMP FOLDER "
+sudo cp /etc/nginx/nginx.conf /var/tmp/nginx-backup/
+
+echo " COPYING LETS ENCRYPT CERTS TO TEMP FOLDER "
+sudo cp -r /etc/letsencrypt/live/ /var/tmp/nginx-backup/
+
+echo " CREATING BACKUP FULL CONF "
+sudo touch /var/tmp/nginx-backup/full.conf
+sudo nginx -T > /var/tmp/nginx-backup/full.conf
+
+echo " COMPRESSING TEMP FOLDER "
+backupdate="$(date +'%Y-%m-%d-%s')"
+
+echo " BACKUP NAME = $backupdate "
+cd /var/tmp/
+sudo zip -r ~/nginx-backup-$backupdate.zip nginx-backup/
+cd
+
+echo " REMOVING TEMP BACKUP FOLDER "
+sudo rm -rf /var/tmp/nginx-backup
+
+echo " COPYING BACKUP TO SERVER "
+sudo scp nginx-backup-$backupdate.zip $dest:$path
+
+echo " REMOVING COMPRESSED BACKUP "
+sudo rm nginx-backup-$backupdate.zip
+
+echo " DONE! "
