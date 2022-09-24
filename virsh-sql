@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+#
+# https://beamnetworks.dev
+# CREATED BY: cole@beamnetworks.dev
+#
+#
+
+while sleep 10s;
+do
+
+tmpoutput="tmpvirsh"
+# | tail -n -1
+# Get all VM statuses
+allvms="$(virsh -c qemu:///system list --all | tail -n +3)"
+
+# Update last updated time
+date="$(date +"%m/%d/%Y-%I:%M:%S-%p")"
+
+# Get Hostname of server
+hostname="$(hostname)"
+
+# Parse Virt Data, echo for debugging
+echo "$allvms" | while read line; do
+
+# Set Active VM name for while statement
+vmname="$(echo "$line" | xargs | awk '{if(NR == 1){print $2}}')"
+
+# Get VM Status, export as variable.
+status="$(virsh -c qemu:///system list --all| grep -E '(^|\s)'$vmname'($|\s)' | tr -s '[:space:]' '[\n*]' | tail -1)"
+
+# Get VM number, export as variable
+id="$(virsh -c qemu:///system list | grep -E '(^|\s)'$vmname'($|\s)' | grep -Eo '[0-9]{1,3}' | head -n1)"
+
+# Fix Null VM Statuses
+if [ ! -z $id ] ; then
+  virtid=$id
+else
+  virtid=NULL
+fi
+
+# Report to Server
+    curl \
+    --silent \
+    -d '{"name":"'$vmname'","status":"'$status'","last_report_date":"'$date'","server":"'$hostname'","virt_id":"'$virtid'"}' \
+    -H "Content-Type: application/json" \
+    -X POST http://posturl \
+    --output /dev/null
+done
+echo "Data updated at $(date)"
+done
