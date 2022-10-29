@@ -4,10 +4,10 @@
 # Make sure to change version to what version fits your install. Options include: arm32, arm64, amd32, amd64.
 version="arm64"
 
-rm cloudflared.deb
-
 curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$version.deb
 
 sudo dpkg -i cloudflared.deb 
 
 sudo systemctl restart cloudflared
+
+rm cloudflared.deb
