@@ -26,6 +26,9 @@ echo " CREATING BACKUP FULL CONF "
 sudo touch /var/tmp/nginx-backup/full.conf
 sudo nginx -T > /var/tmp/nginx-backup/full.conf
 
+echo " BACKING UP WEB DATA "
+sudo cp -r /usr/share/nginx/ /var/tmp/nginx-backup/
+
 echo " COMPRESSING TEMP FOLDER "
 backupdate="$(date +'%Y-%m-%d-%s')"
 
