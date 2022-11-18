@@ -1,0 +1,10 @@
+virt-install \
+-n bntwx2 \
+--osinfo=ubuntujammy \
+--memory=2048 \
+--vcpus=2 \
+--cdrom=/mnt/md0/disk-images/jammy-live-server-amd64-latest.iso \
+--console pty,target_type=serial \
+--network type=direct,source=bond0,source_mode=bridge,model=virtio \
+--disk='/mnt/md0/virtual-machines/bntwx2.qcow2',bus=virtio \
+--debug
