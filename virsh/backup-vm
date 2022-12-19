@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+# Created by Cole - cole@beamnetworks.dev
+#
+
+echo "Defining variables"
+complete=0
+vm="bn-mp-nodered"
+mkdir /mnt/md0/backups/{{REDACTED}}/$vm/
+srcdir="$(virsh -c qemu:///system domblklist $vm | grep qcow2 | sed -e 's/\<vda\>//g' | xargs)"
+bktime="$(date +%s)"
+bkdir="$(date +%d-%m-%y-%s)"
+
+echo "Source directory"
+echo $srcdir
+
+echo "Backup time"
+echo $bktime
+
+echo "Starting backup"
+virsh -c qemu:///system backup-begin $vm
+
+echo "Backup name"
+echo $srcdir.$bktime
+
+echo "Setting up backup directory"
+mkdir /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir
+
+while [ $complete = 0 ]
+do 
+
+sleep 2s
+
+currentstatus="$(virsh -c qemu:///system domjobinfo $vm | grep 'Time elapsed')"
+
+if [ ! -z "$currentstatus" ] ; then
+    echo "BACKUP NOT DONE YET, CONTINUING"
+    sleep 2s
+else
+    echo "BACKUP DONE, EXITING"
+    complete=1
+fi
+
+done
+
+echo "Copying backup to disk"
+mv $srcdir.$bktime /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir/
+
+echo "Backing up XML file"
+virsh -c qemu:///system dumpxml --domain $vm > /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir/$vm.xml
