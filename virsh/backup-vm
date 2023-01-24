@@ -3,10 +3,12 @@
 # Created by Cole - cole@beamnetworks.dev
 #
 
+#!/bin/bash
+
 echo "Defining variables"
 complete=0
-vm="bn-mp-nodered"
-mkdir /mnt/md0/backups/{{REDACTED}}/$vm/
+vm="$(echo $1)"
+mkdir {{redacted}}/bntwx/virtual-machines/$vm/
 srcdir="$(virsh -c qemu:///system domblklist $vm | grep qcow2 | sed -e 's/\<vda\>//g' | xargs)"
 bktime="$(date +%s)"
 bkdir="$(date +%d-%m-%y-%s)"
@@ -24,7 +26,7 @@ echo "Backup name"
 echo $srcdir.$bktime
 
 echo "Setting up backup directory"
-mkdir /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir
+mkdir {{redacted}}/bntwx/virtual-machines/$vm/$bkdir
 
 while [ $complete = 0 ]
 do 
@@ -34,7 +36,7 @@ sleep 2s
 currentstatus="$(virsh -c qemu:///system domjobinfo $vm | grep 'Time elapsed')"
 
 if [ ! -z "$currentstatus" ] ; then
-    echo "BACKUP NOT DONE YET, CONTINUING"
+    echo "BACKUP NOT DONE YET, CONTINUING $i"
     sleep 2s
 else
     echo "BACKUP DONE, EXITING"
@@ -43,8 +45,23 @@ fi
 
 done
 
+sleep 1s
+
+echo "Setting permissions on backup file"
+sudo chmod 777 $srcdir.$bktime
+
 echo "Copying backup to disk"
-mv $srcdir.$bktime /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir/
+mv $srcdir.$bktime {{redacted}}/bntwx/virtual-machines/$vm/$bkdir/
 
 echo "Backing up XML file"
-virsh -c qemu:///system dumpxml --domain $vm > /mnt/md0/backups/{{REDACTED}}/$vm/$bkdir/$vm.xml
+virsh -c qemu:///system dumpxml --domain $vm > {{redacted}}/bntwx/virtual-machines/$vm/$bkdir/$vm.xml
+
+echo "Logging it"
+curl \
+    --silent \
+    -d '{"vm":"'$vm'","backup":"true"}' \
+    -H "Content-Type: application/json" \
+    -X POST https://{{redacted}}/scripts/backups \
+    --output /dev/null
+
+echo "Done!"
