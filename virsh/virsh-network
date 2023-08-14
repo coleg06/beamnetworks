@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+#
+# https://beamnetworks.dev
+# CREATED BY: cole@beamnetworks.dev
+#
+#
+# SCRIPT WILL UPDATE REDIS DATABASE WITH CURRENT NETWORK STATS OF VIRSH VM
+#
+#
+
+while sleep 1s;
+do
+
+REDIS_HOST="REDACTED"
+REDIS_PORT="6379"
+REDIS_PASSWORD="REDACTED"
+
+# Connect to Redis server
+redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWORD ping >/dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+  echo "Failed to connect to Redis server" >&2
+  exit 1
+fi
+
+for vm in $(virsh -c qemu:///system list --name); do
+  for interface in $(virsh -c qemu:///system domiflist $vm | grep -oP '(?<=\s)\w+(?=\s+\S+\s+\S+\s+virtio)'); do
+    # Get the network usage for the interface using ifstat
+    #    usage=$(virsh -c qemu:///system domifstat $vm $interface | grep "tx_bytes" | awk '{print $3}')
+    # Store initial transmitted or received bytes
+    initialUsage=$(virsh -c qemu:///system domifstat $vm $interface | awk -v field=tx_bytes '/tx_bytes|rx_bytes/ {sum += $3} END {print sum}')
+    sleep 2 # Sleep for 2 seconds
+
+    # Store transmitted or received bytes after the time interval
+    finalUsage=$(virsh -c qemu:///system domifstat $vm $interface | awk -v field=tx_bytes '/tx_bytes|rx_bytes/ {sum += $3} END {print sum}')
+
+    # Calculate the data rate in Mbps for the 2-second interval
+    dataBytes=$((finalUsage - initialUsage))
+    timeSeconds=1
+    dataBits=$(bc <<< "scale=1; $dataBytes * 8")
+    dataRateMbps=$(bc <<< "scale=1; $dataBits / $timeSeconds / 1000000")
+
+    usage=$(echo $dataRateMbps)
+
+    # Get the current Unix time
+    timestamp=$(date +%s)
+
+    # Store the network usage data in Redis
+    redis-cli -h $REDIS_HOST -p $REDIS_PORT -a $REDIS_PASSWORD SET "vm:${vm}:timestamp:${timestamp}" $usage >/dev/null 2>&1
+  done
+done
+
+
+echo "Data updated at $(date)"
+done
